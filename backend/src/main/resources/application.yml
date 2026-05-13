@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: 在线电影购票系统
+  datasource:
+    url: jdbc:mysql://localhost:3306/movie_db?useUnicode=true&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  sql:
+    init:
+      mode: always
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: always
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+  mvc:
+    view:
+      prefix: /WEB-INF/views/
+      suffix: .jsp
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+file:
+  upload-dir: ${user.dir}/movie_uploads
+
+server:
+  port: 8080

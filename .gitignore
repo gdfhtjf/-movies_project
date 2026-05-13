@@ -1,0 +1,47 @@
+# ===========================================
+# 在线电影购票系统 - Git Ignore
+# ===========================================
+
+# --- Java / Maven ---
+target/
+*.class
+*.jar
+*.war
+*.log
+!.mvn/wrapper/maven-wrapper.jar
+
+# --- Node / Vue / Vite ---
+node_modules/
+dist/
+.vite/
+*.local
+
+# --- IDE ---
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Claude Code ---
+.claude/settings.local.json
+
+# --- Environment & Secrets ---
+.env
+.env.local
+.env.*.local
+
+# --- Uploaded Files ---
+backend/movie_uploads/*
+!backend/movie_uploads/.gitkeep
+
+# --- Maven Wrapper (optional) ---
+# .mvn/
+# mvnw
+# mvnw.cmd
