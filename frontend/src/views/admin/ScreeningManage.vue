@@ -38,13 +38,14 @@
 
     <n-data-table
       :columns="visibleColumns"
-      :data="screenings"
+      :data="sortedScreenings"
       :loading="loading"
       :row-key="(r) => r.id"
       :checked-row-keys="checkedKeys"
       :bordered="false"
       striped
       @update:checked-row-keys="onCheck"
+      @update:sorter="handleSorterChange"
     />
 
     <div style="display:flex; justify-content:flex-end; margin-top:16px">
@@ -170,6 +171,32 @@ const loading = ref(false)
 const checkedKeys = ref([])
 const addModalOpen = ref(false)
 const addSubmitting = ref(false)
+const sortState = ref(null)
+
+const sortedScreenings = computed(() => {
+  const data = [...screenings.value]
+  if (!sortState.value || !sortState.value.order) return data
+  const { columnKey, order } = sortState.value
+  return data.sort((a, b) => {
+    const va = a[columnKey]
+    const vb = b[columnKey]
+    if (columnKey === 'price') {
+      return order === 'ascend' ? (va ?? 0) - (vb ?? 0) : (vb ?? 0) - (va ?? 0)
+    }
+    if (columnKey === 'startTime') {
+      return order === 'ascend'
+        ? new Date(va || 0) - new Date(vb || 0)
+        : new Date(vb || 0) - new Date(va || 0)
+    }
+    return order === 'ascend'
+      ? String(va || '').localeCompare(String(vb || ''), 'zh')
+      : String(vb || '').localeCompare(String(va || ''), 'zh')
+  })
+})
+
+function handleSorterChange(sorter) {
+  sortState.value = sorter
+}
 const editModalOpen = ref(false)
 const editSubmitting = ref(false)
 const editingRow = ref(null)
@@ -209,10 +236,10 @@ const pagination = reactive({
 
 const allColumns = [
   { key: 'movieTitle', title: '电影', width: 160 },
-  { key: 'hallNumber', title: '影厅', width: 90 },
-  { key: 'startTime', title: '开始时间', width: 170 },
+  { key: 'hallNumber', title: '影厅', width: 90, sorter: true },
+  { key: 'startTime', title: '开始时间', width: 170, sorter: true },
   { key: 'endTime', title: '结束时间', width: 170 },
-  { key: 'price', title: '票价(¥)', width: 90 },
+  { key: 'price', title: '票价(¥)', width: 90, sorter: true },
   { key: 'status', title: '状态', width: 90 },
   { key: 'remainingSeats', title: '剩余/总', width: 100 },
   { key: 'actions', title: '操作', width: 140 },

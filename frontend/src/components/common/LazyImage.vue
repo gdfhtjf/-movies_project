@@ -15,7 +15,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 import { useIntersectionObserver } from '@vueuse/core'
 
 const props = defineProps({
@@ -41,23 +41,6 @@ const { stop } = useIntersectionObserver(
   },
   { threshold: 0, rootMargin: '300px' }
 )
-
-onMounted(() => {
-  // 如果组件加载时已在视口，直接加载
-  if (!hasIntersected.value) {
-    const observer = new IntersectionObserver(
-      ([{ isIntersecting }]) => {
-        if (isIntersecting && !hasIntersected.value) {
-          hasIntersected.value = true
-          realSrc.value = props.src
-          observer.disconnect()
-        }
-      },
-      { threshold: 0, rootMargin: '300px' }
-    )
-    observer.observe(imgRef.value)
-  }
-})
 
 watch(realSrc, (url) => {
   if (!url) return

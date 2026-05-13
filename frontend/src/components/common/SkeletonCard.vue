@@ -1,5 +1,5 @@
 <template>
-  <div class="skeleton-card">
+  <div v-for="i in count" :key="i" class="skeleton-card">
     <div class="sk-img shimmer"></div>
     <div class="sk-body">
       <div class="sk-line shimmer w-70"></div>

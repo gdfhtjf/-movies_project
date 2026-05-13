@@ -30,6 +30,22 @@ public class User implements Serializable {
 
     private String role;
 
+    @TableField("email")
+    private String email;
+
+    @TableField("phone")
+    private String phone;
+
+    @TableField("avatar_path")
+    private String avatarPath;
+
+    @TableField("reset_token")
+    private String resetToken;
+
+    @TableField("reset_token_expire")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime resetTokenExpire;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @TableField("create_time")
     private LocalDateTime createTime;

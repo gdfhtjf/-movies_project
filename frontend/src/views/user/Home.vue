@@ -25,7 +25,7 @@
             />
             <div class="hero-overlay"></div>
           </div>
-          
+
           <div class="hero-content-wrapper">
             <div class="hero-left">
               <div class="hero-poster-wrap">
@@ -37,7 +37,7 @@
                 <div class="hot-badge">🔥 正在热映</div>
               </div>
             </div>
-            
+
             <div class="hero-right">
               <h1 class="hero-title">{{ movie.title }}</h1>
               <div class="hero-meta-tags">
@@ -75,29 +75,40 @@
           <h2 class="section-title">🎬 发现好片</h2>
           <p class="section-subtitle">探索正在热映的精彩电影</p>
         </div>
-        
+
         <div class="search-filter-wrap">
           <div class="search-bar">
             <n-input
-              v-model:value="searchQuery"
+              v-model:value="searchInput"
               type="text"
               placeholder="搜索电影名称..."
               clearable
               size="large"
-              @keydown.enter="doSearch"
-              @clear="searchQuery = ''"
+              aria-label="搜索电影"
             >
               <template #prefix>
                 <n-icon><SearchOutline /></n-icon>
               </template>
             </n-input>
           </div>
-          
+
+          <n-select
+            v-model:value="activeGenre"
+            :options="genreSelectOptions"
+            placeholder="全部类型"
+            clearable
+            size="large"
+            style="width: 150px;"
+            aria-label="选择电影类型"
+            @update:value="onGenreChange"
+          />
+
           <n-select
             v-model:value="sortBy"
             :options="sortOptions"
             size="large"
             style="width: 140px;"
+            @update:value="onSortChange"
           />
         </div>
       </div>
@@ -109,7 +120,7 @@
           :key="g.value"
           :class="{ active: activeGenre === g.value }"
           class="genre-btn"
-          @click="activeGenre = g.value"
+          @click="setGenre(g.value)"
         >
           <span class="genre-icon">{{ g.icon }}</span>
           <span class="genre-text">{{ g.label }}</span>
@@ -119,13 +130,18 @@
       <!-- 搜索结果提示 -->
       <div class="search-info" v-if="searchQuery">
         <span class="search-icon">🔍</span>
-        搜索 <span class="search-highlight">{{ searchQuery }}</span>，找到 <span class="count-highlight">{{ displayedMovies.length }}</span> 部电影
+        搜索 <span class="search-highlight">{{ searchQuery }}</span>，找到 <span class="count-highlight">{{ movieStore.total }}</span> 部电影
+      </div>
+
+      <!-- 骨架屏加载 -->
+      <div v-if="movieStore.loading" class="movie-grid">
+        <SkeletonCard v-for="i in 8" :key="i" :count="1" />
       </div>
 
       <!-- 电影网格 -->
-      <div v-if="displayedMovies.length" class="movie-grid">
+      <div v-else-if="movieStore.list.length" class="movie-grid">
         <div
-          v-for="(movie, idx) in sortedMovies"
+          v-for="(movie, idx) in movieStore.list"
           :key="movie.id"
           class="movie-card"
           @click="$router.push(`/detail/${movie.id}`)"
@@ -144,17 +160,17 @@
                 立即购票
               </n-button>
             </div>
-            
+
             <!-- 热映标签 -->
             <div class="card-badge hot">🔥 热映</div>
-            
+
             <!-- 评分标签 -->
             <div class="card-rating" v-if="movie.rating">
               <span class="star">⭐</span>
               <span class="rating-value">{{ movie.rating }}</span>
             </div>
           </div>
-          
+
           <div class="movie-card-body">
             <h4 class="movie-card-title">{{ movie.title }}</h4>
             <div class="card-meta">
@@ -172,12 +188,23 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 空状态 -->
       <div v-else class="empty-state">
         <div class="empty-icon">{{ searchQuery ? '🔍' : '🎬' }}</div>
         <h3 class="empty-title">{{ searchQuery ? '未找到相关电影' : '暂无电影' }}</h3>
         <p class="empty-desc">{{ searchQuery ? '请尝试其他关键词' : '管理员尚未添加任何电影' }}</p>
+      </div>
+
+      <!-- 分页 -->
+      <div v-if="movieStore.total > movieStore.pageSize" class="pagination-wrap">
+        <n-pagination
+          v-model:page="movieStore.currentPage"
+          :page-size="movieStore.pageSize"
+          :item-count="movieStore.total"
+          @update:page="loadPage"
+          class="home-pagination"
+        />
       </div>
     </div>
   </div>
@@ -185,15 +212,32 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import { SearchOutline, TicketOutline } from '@vicons/ionicons5'
 import api from '@/utils/api'
 import { getMoviePoster, getHeroPoster } from '@/utils/poster'
+import { useMovieStore } from '@/stores/movies'
+import SkeletonCard from '@/components/common/SkeletonCard.vue'
+
+const movieStore = useMovieStore()
 
 const allMovies = ref([])
 const activeGenre = ref('全部')
 const currentSlide = ref(0)
+const searchInput = ref('')
 const searchQuery = ref('')
 const sortBy = ref('hot')
+const genreOptions = ref([])
+
+const debouncedSearch = useDebounceFn((val) => {
+  searchQuery.value = val
+  movieStore.currentPage = 1
+  loadPage()
+}, 300)
+
+watch(searchInput, (val) => {
+  debouncedSearch(val)
+})
 
 const genres = [
   { value: '全部', label: '全部', icon: '🎬' },
@@ -207,6 +251,13 @@ const genres = [
   { value: '动画', label: '动画', icon: '🎨' },
   { value: '爱情', label: '爱情', icon: '💕' }
 ]
+
+const genreSelectOptions = computed(() => {
+  if (genreOptions.value.length) {
+    return [{ label: '全部类型', value: '全部' }, ...genreOptions.value.map(g => ({ label: g, value: g }))]
+  }
+  return genres.map(g => ({ label: g.label, value: g.value }))
+})
 
 const sortOptions = [
   { label: '热度排序', value: 'hot' },
@@ -223,45 +274,48 @@ const featuredMovies = computed(() => {
   return HERO_MOVIE_NAMES.map(name => picked.find(m => m.title === name)).filter(Boolean)
 })
 
-const filteredMovies = computed(() => {
-  if (activeGenre.value === '全部') return allMovies.value
-  return allMovies.value.filter(m =>
-    m.genre && m.genre.includes(activeGenre.value)
-  )
-})
-
-const displayedMovies = computed(() => {
-  let result = filteredMovies.value
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.trim().toLowerCase()
-    result = result.filter(m => m.title && m.title.toLowerCase().includes(q))
-  }
-  return result
-})
-
-const sortedMovies = computed(() => {
-  let movies = [...displayedMovies.value]
-  if (sortBy.value === 'hot') {
-    movies = movies.sort((a, b) => (b.rating || 0) - (a.rating || 0))
-  } else if (sortBy.value === 'price_asc') {
-    movies = movies.sort((a, b) => (a.price || 0) - (b.price || 0))
-  } else if (sortBy.value === 'price_desc') {
-    movies = movies.sort((a, b) => (b.price || 0) - (a.price || 0))
-  } else if (sortBy.value === 'duration') {
-    movies = movies.sort((a, b) => (b.duration || 0) - (a.duration || 0))
-  }
-  return movies
-})
-
-function doSearch() {
-  // 搜索由 computed 自动响应
-}
-
-onMounted(async () => {
+async function loadHeroMovies() {
   try {
     const res = await api.get('/movies', { params: { page: 1, size: 50 } })
     allMovies.value = res.data?.records || []
   } catch { /* handled */ }
+}
+
+async function loadPage() {
+  const params = {}
+  if (searchQuery.value.trim()) params.keyword = searchQuery.value.trim()
+  if (activeGenre.value && activeGenre.value !== '全部') params.genre = activeGenre.value
+  if (sortBy.value === 'price_asc') params.sort = 'price_asc'
+  else if (sortBy.value === 'price_desc') params.sort = 'price_desc'
+  else if (sortBy.value === 'duration') params.sort = 'duration'
+  await movieStore.fetchMovies(params)
+}
+
+function setGenre(val) {
+  activeGenre.value = val
+  movieStore.currentPage = 1
+  loadPage()
+}
+
+function onGenreChange() {
+  movieStore.currentPage = 1
+  loadPage()
+}
+
+function onSortChange() {
+  movieStore.currentPage = 1
+  loadPage()
+}
+
+async function loadGenres() {
+  try {
+    const res = await api.get('/genres')
+    genreOptions.value = res.data || []
+  } catch { /* fallback to preset genres */ }
+}
+
+onMounted(async () => {
+  await Promise.all([loadHeroMovies(), loadPage(), loadGenres()])
 })
 </script>
 
@@ -629,7 +683,6 @@ onMounted(async () => {
   background: #1a1a1a;
   border: 1px solid rgba(255, 255, 255, 0.06);
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: 0;
   animation: fadeInUp 0.5s forwards;
 }
 
@@ -797,6 +850,23 @@ onMounted(async () => {
   color: #e50914;
 }
 
+/* Pagination */
+.pagination-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 48px;
+}
+
+.home-pagination :deep(.n-pagination-item) {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.home-pagination :deep(.n-pagination-item.n-pagination-item--active) {
+  background: #e50914;
+  border-color: #e50914;
+  color: #fff;
+}
+
 /* Empty State */
 .empty-state {
   text-align: center;
@@ -828,24 +898,24 @@ onMounted(async () => {
   .hero-slide {
     height: 540px;
   }
-  
+
   .movie-grid {
     grid-template-columns: repeat(4, 1fr);
     gap: 20px;
   }
-  
+
   .hero-content-wrapper {
     gap: 48px;
   }
-  
+
   .hero-poster-wrap {
     width: 280px;
   }
-  
+
   .hero-title {
     font-size: 42px;
   }
-  
+
   .price-value {
     font-size: 38px;
   }
@@ -856,45 +926,45 @@ onMounted(async () => {
   .hero-slide {
     height: 420px;
   }
-  
+
   .hero-content-wrapper {
     flex-direction: column;
     text-align: center;
     padding-top: 80px;
   }
-  
+
   .hero-poster-wrap {
     width: 160px;
   }
-  
+
   .hero-right {
     max-width: 100%;
   }
-  
+
   .hero-title {
     font-size: 28px;
   }
-  
+
   .hero-meta-tags {
     justify-content: center;
   }
-  
+
   .hero-bottom {
     justify-content: center;
   }
-  
+
   .movie-grid {
     grid-template-columns: repeat(3, 1fr);
   }
-  
+
   .search-filter-wrap {
     width: 100%;
   }
-  
+
   .search-bar {
     flex: 1;
   }
-  
+
   .section-header {
     flex-direction: column;
     align-items: flex-start;
@@ -906,33 +976,33 @@ onMounted(async () => {
   .hero-slide {
     height: 380px;
   }
-  
+
   .hero-poster-wrap {
     width: 140px;
   }
-  
+
   .hero-title {
     font-size: 24px;
   }
-  
+
   .price-value {
     font-size: 28px;
   }
-  
+
   .movie-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
   }
-  
+
   .genre-tabs {
     gap: 8px;
   }
-  
+
   .genre-btn {
     padding: 8px 14px;
     font-size: 13px;
   }
-  
+
   .main-content {
     padding: 32px 16px;
   }
@@ -943,27 +1013,27 @@ onMounted(async () => {
   .hero-slide {
     height: 340px;
   }
-  
+
   .search-filter-wrap {
     flex-direction: column;
   }
-  
+
   .search-bar {
     width: 100%;
   }
-  
+
   .search-filter-wrap .n-select {
     width: 100% !important;
   }
-  
+
   .section-title {
     font-size: 22px;
   }
-  
+
   .movie-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .hero-cta {
     padding: 12px 36px;
   }

@@ -18,7 +18,12 @@ v-model:value="form.password" type="password" placeholder="请输入密码" size
           <n-button type="error" size="large" :loading="loading" block @click="doLogin">登录</n-button>
         </n-form-item>
       </n-form>
-      <p class="switch">还没有账号？<router-link to="/register">立即注册</router-link></p>
+      <p class="switch">
+        还没有账号？<router-link to="/register">立即注册</router-link>
+      </p>
+      <p class="switch">
+        <router-link to="/forgot-password">忘记密码？</router-link>
+      </p>
     </div>
   </div>
 </template>

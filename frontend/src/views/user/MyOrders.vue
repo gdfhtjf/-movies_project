@@ -43,11 +43,11 @@
           </div>
         </div>
 
-        <div v-if="o.status === 'CREATED' || o.status === 'PAID'" class="order-actions">
-          <n-button v-if="o.status === 'CREATED'" size="small" type="error" @click="cancelOrder(o)">
+        <div v-if="o.status?.toLowerCase() === 'pending' || o.status?.toLowerCase() === 'paid'" class="order-actions">
+          <n-button v-if="o.status?.toLowerCase() === 'pending'" size="small" type="error" @click="cancelOrder(o)">
             取消订单
           </n-button>
-          <n-button v-if="o.status === 'CREATED'" size="small" type="warning" @click="payOrder(o)">
+          <n-button v-if="o.status?.toLowerCase() === 'pending'" size="small" type="warning" @click="payOrder(o)">
             去支付
           </n-button>
         </div>
@@ -72,31 +72,31 @@ const { message, dialog } = createDiscreteApi(['message', 'dialog'])
 const orders = ref([])
 
 const STATUS_MAP = {
-  CREATED: { label: '待支付', cls: 'status-pending', desc: '订单已创建，等待支付' },
-  PAID: { label: '已支付', cls: 'status-paid', desc: '支付成功，等待出票' },
-  TICKETED: { label: '已出票', cls: 'status-ticketed', desc: '已出票，请按时观影' },
-  COMPLETED: { label: '已完成', cls: 'status-completed', desc: '观影完成' },
-  CANCELLED: { label: '已取消', cls: 'status-cancelled', desc: '订单已取消' },
+  pending: { label: '待支付', cls: 'status-pending', desc: '订单已创建，等待支付' },
+  paid: { label: '已支付', cls: 'status-paid', desc: '支付成功，等待出票' },
+  ticketed: { label: '已出票', cls: 'status-ticketed', desc: '已出票，请按时观影' },
+  completed: { label: '已完成', cls: 'status-completed', desc: '观影完成' },
+  cancelled: { label: '已取消', cls: 'status-cancelled', desc: '订单已取消' },
 }
 
 function statusLabel(status) {
-  return STATUS_MAP[status]?.label || status || '未知'
+  return STATUS_MAP[status?.toLowerCase()]?.label || status || '未知'
 }
 
 function statusClass(status) {
-  return STATUS_MAP[status]?.cls || 'status-pending'
+  return STATUS_MAP[status?.toLowerCase()]?.cls || 'status-pending'
 }
 
 function timelineNodes(order) {
-  const s = order.status
+  const s = order.status?.toLowerCase() || ''
   const nodes = [
     { key: 'created', label: '下单', time: order.createTime?.replace('T', ' ') || '', active: true },
-    { key: 'paid', label: '支付', time: s === 'PAID' || s === 'TICKETED' || s === 'COMPLETED' ? (order.payTime || order.createTime?.replace('T', ' ')) : null, active: s === 'PAID' || s === 'TICKETED' || s === 'COMPLETED' },
-    { key: 'ticketed', label: '出票', time: s === 'TICKETED' || s === 'COMPLETED' ? (order.ticketTime || order.createTime?.replace('T', ' ')) : null, active: s === 'TICKETED' || s === 'COMPLETED' },
-    { key: 'completed', label: '完成', time: s === 'COMPLETED' ? (order.completeTime || order.createTime?.replace('T', ' ')) : null, active: s === 'COMPLETED' },
+    { key: 'paid', label: '支付', time: s === 'paid' || s === 'ticketed' || s === 'completed' ? (order.payTime || order.createTime?.replace('T', ' ')) : null, active: s === 'paid' || s === 'ticketed' || s === 'completed' },
+    { key: 'ticketed', label: '出票', time: s === 'ticketed' || s === 'completed' ? (order.ticketTime || order.createTime?.replace('T', ' ')) : null, active: s === 'ticketed' || s === 'completed' },
+    { key: 'completed', label: '完成', time: s === 'completed' ? (order.completeTime || order.createTime?.replace('T', ' ')) : null, active: s === 'completed' },
   ]
 
-  if (s === 'CANCELLED') {
+  if (s === 'cancelled') {
     nodes.forEach((n) => { n.active = n.key === 'created' })
     nodes.push({ key: 'cancelled', label: '已取消', time: order.cancelTime?.replace('T', ' ') || order.createTime?.replace('T', ' ') || '', active: true })
   }
@@ -121,14 +121,11 @@ async function cancelOrder(order) {
 }
 
 async function payOrder(order) {
-  message.info('模拟支付中...')
-  setTimeout(async () => {
-    try {
-      await api.put(`/orders/${order.id}/pay`)
-      message.success('支付成功！')
-      fetchOrders()
-    } catch { /* handled */ }
-  }, 800)
+  try {
+    await api.put(`/orders/${order.id}`, { status: 'paid' })
+    message.success('支付成功！')
+    fetchOrders()
+  } catch { /* handled */ }
 }
 
 async function fetchOrders() {
@@ -153,10 +150,7 @@ onMounted(() => {
 .page-title {
   font-size: 28px;
   font-weight: 800;
-  background: linear-gradient(135deg, #ffffff 0%, #ff9f1c 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--color-text);
   border: none;
   margin-bottom: 32px;
   padding: 0;
@@ -213,14 +207,10 @@ onMounted(() => {
   color: #444;
 }
 
-.order-price { 
-  color: #ff9f1c; 
-  font-weight: 800; 
+.order-price {
+  color: var(--color-accent-gold);
+  font-weight: 800;
   font-size: 1.05rem;
-  background: linear-gradient(135deg, #ff9f1c 0%, #ffd54f 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .order-status-area { 

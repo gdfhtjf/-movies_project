@@ -50,7 +50,7 @@
 
     <n-data-table
       :columns="visibleColumns"
-      :data="movies"
+      :data="sortedMovies"
       :loading="loading"
       :row-key="(r) => r.id"
       :checked-row-keys="checkedKeys"
@@ -59,6 +59,7 @@
       :single-line="false"
       striped
       @update:checked-row-keys="onCheck"
+      @update:sorter="handleSorterChange"
     />
 
     <div style="display:flex; justify-content:flex-end; margin-top:16px">
@@ -92,6 +93,27 @@ const router = useRouter()
 const movies = ref([])
 const loading = ref(false)
 const checkedKeys = ref([])
+const sortState = ref(null)
+
+const sortedMovies = computed(() => {
+  const data = [...movies.value]
+  if (!sortState.value || !sortState.value.order) return data
+  const { columnKey, order } = sortState.value
+  return data.sort((a, b) => {
+    const va = a[columnKey]
+    const vb = b[columnKey]
+    if (columnKey === 'price') {
+      return order === 'ascend' ? (va ?? 0) - (vb ?? 0) : (vb ?? 0) - (va ?? 0)
+    }
+    return order === 'ascend'
+      ? String(va || '').localeCompare(String(vb || ''), 'zh')
+      : String(vb || '').localeCompare(String(va || ''), 'zh')
+  })
+})
+
+function handleSorterChange(sorter) {
+  sortState.value = sorter
+}
 
 const filters = reactive({ search: '' })
 
@@ -102,10 +124,10 @@ const pagination = reactive({
 })
 
 const allColumns = [
-  { key: 'title', title: '电影名称', width: 160 },
+  { key: 'title', title: '电影名称', width: 160, sorter: true },
   { key: 'director', title: '导演', width: 100 },
   { key: 'genre', title: '类型', width: 120 },
-  { key: 'price', title: '票价(¥)', width: 90 },
+  { key: 'price', title: '票价(¥)', width: 90, sorter: true },
   { key: 'duration', title: '时长(分)', width: 90 },
   { key: 'releaseDate', title: '上映日期', width: 110 },
   { key: 'stock', title: '库存', width: 70 },

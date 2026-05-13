@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.movie.entity.Screening;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ScreeningService extends IService<Screening> {
@@ -13,4 +14,6 @@ public interface ScreeningService extends IService<Screening> {
     Page<Screening> pageScreenings(int current, int size, Integer movieId, String keyword, String hallNumber);
 
     void deleteScreeningWithCheck(Integer id);
+
+    boolean hasTimeConflict(String hallNumber, LocalDateTime startTime, LocalDateTime endTime, Integer excludeScreeningId);
 }

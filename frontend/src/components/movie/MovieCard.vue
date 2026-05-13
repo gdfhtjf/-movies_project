@@ -1,7 +1,7 @@
 <template>
-  <div class="movie-card" @click="handleClick">
+  <div class="movie-card" @click="handleClick" role="button" :aria-label="`查看 ${movie.title} 详情`" tabindex="0" @keydown.enter="handleClick">
     <div class="card-poster">
-      <img :src="posterUrl" :alt="movie.title" @error="handleImgError" />
+      <img :src="posterUrl" :alt="`${movie.title} 海报`" loading="lazy" @error="handleImgError" />
     </div>
     <div class="card-info">
       <h4 class="card-title">{{ movie.title }}</h4>
@@ -31,7 +31,6 @@ const router = useRouter()
 const posterUrl = computed(() => getMoviePoster(props.movie.title, props.movie.posterPath))
 
 function handleClick() {
-  console.log('点击了电影卡片，ID:', props.movie.id, '标题:', props.movie.title)
   router.push(`/detail/${props.movie.id}`)
 }
 
@@ -42,54 +41,68 @@ function handleImgError(e) {
 
 <style scoped>
 .movie-card {
-  background: #1c1c1c;
-  border: 1px solid #333;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition: transform 0.25s var(--ease-out-quart), box-shadow 0.25s var(--ease-out-quart), border-color 0.25s var(--ease-out-quart);
 }
 
 .movie-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-  border-color: #e50914;
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-accent);
+}
+
+.movie-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .card-poster {
   width: 100%;
   height: 280px;
   overflow: hidden;
+  position: relative;
 }
 
 .card-poster img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.4s var(--ease-out-quart);
+}
+
+.movie-card:hover .card-poster img {
+  transform: scale(1.05);
 }
 
 .card-info {
-  padding: 12px;
+  padding: var(--space-md);
 }
 
 .card-title {
-  margin: 0 0 8px 0;
-  font-size: 16px;
-  color: #fff;
+  margin: 0 0 var(--space-sm) 0;
+  font-size: var(--text-lg);
+  color: var(--color-text);
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card-meta {
   display: flex;
-  gap: 8px;
+  gap: var(--space-sm);
   margin-bottom: 10px;
 }
 
 .card-genre, .card-duration {
-  font-size: 12px;
-  color: #999;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
   padding: 2px 8px;
-  background: #2a2a2a;
+  background: rgba(255,255,255,0.06);
   border-radius: 4px;
 }
 
@@ -100,13 +113,13 @@ function handleImgError(e) {
 }
 
 .card-price {
-  font-size: 18px;
+  font-size: var(--text-lg);
   font-weight: 700;
-  color: #e50914;
+  color: var(--color-accent);
 }
 
 .card-action {
-  font-size: 14px;
-  color: #ffb74d;
+  font-size: var(--text-sm);
+  color: var(--color-accent-gold);
 }
 </style>

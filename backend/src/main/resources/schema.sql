@@ -22,3 +22,55 @@ CREATE TABLE IF NOT EXISTS SPRING_SESSION_ATTRIBUTES (
         REFERENCES SPRING_SESSION(PRIMARY_ID)
         ON DELETE CASCADE
 );
+
+-- V1: 操作日志表
+CREATE TABLE IF NOT EXISTS operation_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50),
+    method VARCHAR(10),
+    uri VARCHAR(255),
+    operation_type VARCHAR(20),
+    ip VARCHAR(50),
+    args_count INT,
+    elapsed_ms BIGINT,
+    status VARCHAR(10),
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- V2: 影评表
+CREATE TABLE IF NOT EXISTS reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    movie_id INT NOT NULL,
+    rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    content TEXT,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- V5: 规范化类型
+CREATE TABLE IF NOT EXISTS genres (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE
+);
+CREATE TABLE IF NOT EXISTS movie_genre (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    movie_id INT NOT NULL,
+    genre_id INT NOT NULL
+);
+INSERT IGNORE INTO genres (name) VALUES
+('动作'), ('喜剧'), ('剧情'), ('科幻'), ('爱情'),
+('悬疑'), ('恐怖'), ('动画'), ('奇幻'), ('犯罪'),
+('战争'), ('历史'), ('武侠'), ('纪录片'), ('音乐');
+
+-- V6: 影厅布局
+CREATE TABLE IF NOT EXISTS hall_layouts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    hall_number VARCHAR(20) NOT NULL UNIQUE,
+    rows_num INT NOT NULL DEFAULT 8,
+    cols_num INT NOT NULL DEFAULT 12,
+    layout_json TEXT COMMENT 'JSON: {aisles:[], exits:[], blocked:[]}'
+);
+INSERT IGNORE INTO hall_layouts (hall_number, rows_num, cols_num) VALUES
+('1号厅', 8, 12), ('2号厅', 8, 12), ('3号厅', 8, 12),
+('4号厅', 6, 10), ('5号厅', 6, 10),
+('IMAX厅', 12, 18), ('VIP厅', 5, 8);

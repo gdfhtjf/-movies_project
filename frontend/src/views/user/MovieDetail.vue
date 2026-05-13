@@ -97,7 +97,7 @@
           <div class="video-wrap" @click="togglePlay">
             <video
               ref="videoRef"
-              :src="`/api/files/download?file=${movie.trailerPath}`"
+              :src="`/api/files/stream/${movie.trailerPath}`"
               class="trailer-video"
               controls
               preload="metadata"
@@ -144,34 +144,74 @@
           </div>
         </div>
 
-        <!-- 短评 -->
+        <!-- 评分与评论 -->
         <div class="reviews-section">
-          <h3 class="section-title">💬 短评 ({{ reviewList.length }})</h3>
-          <div class="review-form">
+          <h3 class="section-title">💬 评分与评论</h3>
+
+          <!-- 评分统计条 -->
+          <div class="review-stats-bar">
+            <div class="stats-info">
+              <span class="stats-avg">{{ reviewStats.avgRating ? reviewStats.avgRating.toFixed(1) : '0.0' }}</span>
+              <n-rate :value="Math.round(reviewStats.avgRating || 0)" readonly :size="18" />
+              <span class="stats-count">{{ reviewStats.reviewCount || 0 }} 条评论</span>
+            </div>
+            <n-button type="error" @click="showReviewModal = true">✏️ 写评论</n-button>
+          </div>
+
+          <!-- 评论列表 -->
+          <div v-if="reviews.length" class="review-list">
+            <div v-for="r in reviews" :key="r.id" class="review-item">
+              <div class="review-header">
+                <div class="review-user-info">
+                  <span class="review-user">{{ r.userName }}</span>
+                  <n-rate :value="r.rating" readonly :size="14" />
+                </div>
+                <div class="review-actions">
+                  <span class="review-time">{{ formatTimeFromTs(r.createTime) }}</span>
+                  <n-button
+                    v-if="auth.user && auth.user.id === r.userId"
+                    text
+                    size="tiny"
+                    type="error"
+                    @click="deleteReview(r.id)"
+                  >删除</n-button>
+                </div>
+              </div>
+              <p class="review-text">{{ r.content }}</p>
+            </div>
+            <div v-if="reviewTotal > reviewPageSize" class="review-pagination">
+              <n-pagination
+                :page="reviewPage"
+                :page-size="reviewPageSize"
+                :item-count="reviewTotal"
+                @update:page="onReviewPageChange"
+              />
+            </div>
+          </div>
+          <div v-else class="review-empty">暂无评论，来写第一条评论吧</div>
+        </div>
+
+        <!-- 写评论弹窗 -->
+        <n-modal v-model:show="showReviewModal" preset="card" title="写评论" style="max-width: 500px;">
+          <div class="review-modal-body">
+            <div class="modal-rate-row">
+              <span class="modal-label">评分</span>
+              <n-rate v-model:value="newRating" :size="24" />
+            </div>
             <n-input
-              v-model:value="reviewText"
+              v-model:value="newContent"
               type="textarea"
-              :rows="3"
+              :rows="4"
               placeholder="写下你的观影感受..."
               maxlength="500"
               show-count
             />
-            <div class="review-form-footer">
-              <n-checkbox v-model:checked="isAnonymous">匿名发表</n-checkbox>
-              <n-button type="error" :disabled="!reviewText.trim()" @click="submitReview">发表短评</n-button>
-            </div>
           </div>
-          <div v-if="reviewList.length" class="review-list">
-            <div v-for="r in reviewList" :key="r.id" class="review-item">
-              <div class="review-header">
-                <span class="review-user">{{ r.userName }}</span>
-                <span class="review-time">{{ formatTimeFromTs(r.time) }}</span>
-              </div>
-              <p class="review-text">{{ r.text }}</p>
-            </div>
-          </div>
-          <div v-else class="review-empty">暂无短评，来抢沙发吧</div>
-        </div>
+          <template #footer>
+            <n-button @click="showReviewModal = false">取消</n-button>
+            <n-button type="error" :loading="reviewSubmitting" @click="submitReview">提交</n-button>
+          </template>
+        </n-modal>
       </template>
     </n-spin>
   </div>
@@ -181,7 +221,6 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/utils/api'
-import { useReview } from '@/composables/useReview'
 import { useSimilarMovies } from '@/composables/useSimilarMovies'
 import { useAuthStore } from '@/stores/auth'
 import { createDiscreteApi } from 'naive-ui'
@@ -199,31 +238,37 @@ const movie = ref(null)
 const screenings = ref([])
 const loading = ref(true)
 const error = ref('')
-const reviewText = ref('')
 const videoRef = ref(null)
 const playing = ref(false)
 const favorited = ref(false)
-const isAnonymous = ref(true)
+
+// 评论相关
+const reviewStats = ref({ avgRating: 0, reviewCount: 0 })
+const reviews = ref([])
+const reviewPage = ref(1)
+const reviewTotal = ref(0)
+const reviewPageSize = 10
+const showReviewModal = ref(false)
+const newRating = ref(0)
+const newContent = ref('')
+const reviewSubmitting = ref(false)
 
 // 计算属性
 const movieId = computed(() => Number(route.params.id))
 
 // 引入功能模块
-const { movieReviews, addReview } = useReview(movieId)
-const { 
+const {
   similarMovies, 
   loading: similarLoading, 
   error: similarError, 
   fetchSimilarMovies 
 } = useSimilarMovies()
 
-const reviewList = computed(() => movieReviews.value)
-
 // 监听路由变化，重新加载数据
 watch(() => route.params.id, (newId) => {
   if (newId) {
     loadData()
-    reviewText.value = ''
+    reviewPage.value = 1
   }
 })
 
@@ -267,12 +312,57 @@ function togglePlay() {
   }
 }
 
-function submitReview() {
-  if (!reviewText.value.trim()) return
-  const userName = isAnonymous.value ? '匿名用户' : (auth.user?.name || '用户')
-  addReview(reviewText.value.trim(), userName)
-  reviewText.value = ''
-  message.success('短评发表成功')
+async function loadReviewStats() {
+  try {
+    const res = await api.get(`/reviews/stats/${movieId.value}`)
+    reviewStats.value = res.data || { avgRating: 0, reviewCount: 0 }
+  } catch { /* ignore */ }
+}
+
+async function loadReviews() {
+  try {
+    const res = await api.get('/reviews', {
+      params: { movieId: movieId.value, page: reviewPage.value, size: reviewPageSize }
+    })
+    const data = res.data || {}
+    reviews.value = data.records || []
+    reviewTotal.value = data.total || 0
+  } catch { /* ignore */ }
+}
+
+async function submitReview() {
+  if (!newRating.value || !newContent.value.trim()) {
+    message.warning('请填写评分和评论内容')
+    return
+  }
+  reviewSubmitting.value = true
+  try {
+    await api.post('/reviews', {
+      movieId: movieId.value,
+      rating: newRating.value,
+      content: newContent.value.trim()
+    })
+    message.success('评论发表成功')
+    showReviewModal.value = false
+    newRating.value = 0
+    newContent.value = ''
+    reviewPage.value = 1
+    await Promise.all([loadReviewStats(), loadReviews()])
+  } catch { /* handled */ }
+  reviewSubmitting.value = false
+}
+
+async function deleteReview(id) {
+  try {
+    await api.delete(`/reviews/${id}`)
+    message.success('评论已删除')
+    await Promise.all([loadReviewStats(), loadReviews()])
+  } catch { /* handled */ }
+}
+
+function onReviewPageChange(page) {
+  reviewPage.value = page
+  loadReviews()
 }
 
 // 日期格式化方法
@@ -332,9 +422,10 @@ async function loadData() {
     // 检查收藏状态
     await checkFavorite()
     
-    // 电影详情加载成功后，再加载相似推荐
+    // 电影详情加载成功后，再加载相似推荐和评论
     if (movie.value) {
       await loadSimilarMovies()
+      await Promise.all([loadReviewStats(), loadReviews()])
     }
   } catch (err) {
     error.value = err?.response?.data?.message || err?.message || '加载电影详情失败，请稍后重试'
@@ -346,6 +437,7 @@ async function loadData() {
 
 function retry() {
   error.value = ''
+  reviewPage.value = 1
   loadData()
 }
 
@@ -463,7 +555,7 @@ onMounted(loadData)
   position: relative; 
   border-radius: 12px; 
   overflow: hidden;
-  background: #000; 
+  background: #0a0a0a; 
   cursor: pointer;
 }
 
@@ -699,63 +791,116 @@ onMounted(loadData)
   margin: 0;
 }
 
-/* ===== 短评 ===== */
-.reviews-section { 
-  margin-bottom: 48px; 
+/* ===== 评分与评论 ===== */
+.reviews-section {
+  margin-bottom: 48px;
 }
 
-.review-form { 
-  margin-bottom: 24px; 
-}
-
-.review-form-footer {
-  display: flex; 
-  justify-content: flex-end; 
+/* 评分统计条 */
+.review-stats-bar {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 12px; 
-  margin-top: 10px;
+  background: #1c1c1c;
+  border: 1px solid #444;
+  border-radius: 12px;
+  padding: 16px 24px;
+  margin-bottom: 24px;
 }
 
-.count-hint { 
-  color: #e0e0e0; 
-  font-size: 0.8rem; 
+.stats-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stats-avg {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffb74d;
+}
+
+.stats-count {
+  color: #e0e0e0;
+  font-size: 0.85rem;
 }
 
 .review-item {
-  background: #1c1c1c; 
+  background: #1c1c1c;
   border: 1px solid #555;
-  border-radius: 10px; 
-  padding: 14px 18px; 
+  border-radius: 10px;
+  padding: 14px 18px;
   margin-bottom: 12px;
 }
 
-.review-header { 
-  display: flex; 
-  justify-content: space-between; 
-  margin-bottom: 8px; 
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  align-items: center;
 }
 
-.review-user { 
-  font-weight: 600; 
-  color: #ffb74d; 
-  font-size: 0.9rem; 
+.review-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.review-time { 
-  color: #e0e0e0; 
-  font-size: 0.75rem; 
+.review-user {
+  font-weight: 600;
+  color: #ffb74d;
+  font-size: 0.9rem;
 }
 
-.review-text { 
-  color: #ffffff; 
-  line-height: 1.6; 
-  font-size: 0.92rem; 
+.review-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.review-empty { 
-  text-align: center; 
-  color: #e0e0e0; 
-  padding: 24px; 
+.review-time {
+  color: #e0e0e0;
+  font-size: 0.75rem;
+}
+
+.review-text {
+  color: #ffffff;
+  line-height: 1.6;
+  font-size: 0.92rem;
+}
+
+.review-pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.review-empty {
+  text-align: center;
+  color: #e0e0e0;
+  padding: 24px;
+  background: #1c1c1c;
+  border: 1px solid #444;
+  border-radius: 10px;
+}
+
+/* 写评论弹窗 */
+.review-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-rate-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-label {
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 500;
 }
 
 /* ===== 空/错误状态 ===== */

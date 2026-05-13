@@ -15,6 +15,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @TableName("movies")
@@ -64,4 +65,7 @@ public class Movie {
     @TableField("update_time")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+
+    @TableField(exist = false)
+    private List<String> genreNames;
 }

@@ -2,6 +2,7 @@
   <n-config-provider :theme="darkTheme" :theme-overrides="themeOverrides" :locale="zhCN" :date-locale="dateZhCN">
     <div class="app-bg-layer"></div>
     <vue-particles
+      v-if="!preferReducedMotion && !isLowEndDevice"
       id="global-particles"
       :options="globalParticleOptions"
       class="global-particles"
@@ -9,11 +10,13 @@
     <n-message-provider>
       <n-dialog-provider>
         <n-notification-provider>
-          <router-view v-slot="{ Component }">
-            <transition name="page-fade" mode="out-in">
-              <component :is="Component" />
-            </transition>
-          </router-view>
+          <ErrorBoundary>
+            <router-view v-slot="{ Component }">
+              <transition name="page-fade" mode="out-in">
+                <component :is="Component" />
+              </transition>
+            </router-view>
+          </ErrorBoundary>
         </n-notification-provider>
       </n-dialog-provider>
     </n-message-provider>
@@ -24,10 +27,13 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { darkTheme, zhCN, dateZhCN } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
+import ErrorBoundary from '@/components/common/ErrorBoundary.vue'
 
 const auth = useAuthStore()
 
 const screenWidth = ref(window.innerWidth)
+const preferReducedMotion = ref(false)
+const isLowEndDevice = ref(false)
 
 function onResize() {
   screenWidth.value = window.innerWidth
@@ -35,6 +41,10 @@ function onResize() {
 
 onMounted(() => {
   window.addEventListener('resize', onResize, { passive: true })
+  preferReducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  // 低端设备检测：内存 < 4GB 或 核心数 < 4
+  isLowEndDevice.value = (navigator.deviceMemory && navigator.deviceMemory < 4) ||
+    (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4)
   auth.fetchMe()
 })
 onUnmounted(() => window.removeEventListener('resize', onResize))
@@ -312,11 +322,22 @@ const themeOverrides = {
 
 .page-fade-enter-active,
 .page-fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity 0.25s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .page-fade-enter-from,
 .page-fade-leave-to {
   opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-fade-enter-active,
+  .page-fade-leave-active {
+    transition: none;
+  }
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 </style>

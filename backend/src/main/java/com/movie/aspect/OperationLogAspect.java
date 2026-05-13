@@ -1,8 +1,11 @@
 package com.movie.aspect;
 
 import com.movie.common.Result;
+import com.movie.entity.OperationLog;
+import com.movie.service.OperationLogService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -19,7 +22,10 @@ import java.time.format.DateTimeFormatter;
 @Slf4j
 @Aspect
 @Component
+@RequiredArgsConstructor
 public class OperationLogAspect {
+
+    private final OperationLogService operationLogService;
 
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -44,10 +50,12 @@ public class OperationLogAspect {
         Object result = joinPoint.proceed();
         long elapsed = System.currentTimeMillis() - start;
 
+        String dbStatus = "成功";
         String resultStatus = "成功";
         if (result instanceof Result<?> r) {
             if (r.getCode() != 200) {
                 resultStatus = "失败(" + r.getCode() + "): " + r.getMessage();
+                dbStatus = "失败";
             }
         }
 
@@ -60,6 +68,22 @@ public class OperationLogAspect {
                 args != null ? args.length + "个" : "0",
                 elapsed,
                 resultStatus);
+
+        // 持久化到数据库
+        try {
+            OperationLog logEntry = new OperationLog();
+            logEntry.setUsername(username);
+            logEntry.setMethod(method);
+            logEntry.setUri(uri);
+            logEntry.setOperationType(operation);
+            logEntry.setIp(ip);
+            logEntry.setArgsCount(args != null ? args.length : 0);
+            logEntry.setElapsedMs(elapsed);
+            logEntry.setStatus(dbStatus);
+            operationLogService.save(logEntry);
+        } catch (Exception e) {
+            log.warn("操作日志持久化失败: {}", e.getMessage());
+        }
 
         return result;
     }

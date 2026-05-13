@@ -35,19 +35,46 @@
 
       <div v-if="screening" class="seat-grid-wrap">
         <div class="seat-grid">
-          <div v-for="row in rows" :key="row" class="seat-row">
+          <!-- 出口标记（顶部） -->
+          <div v-if="topExits.length" class="exit-row top-exits">
+            <span class="row-label"></span>
+            <span v-for="(marker, mi) in topExitMarkers" :key="'te-'+mi"
+              class="seat-slot" :class="{ 'slot-placeholder': !marker }">
+              <span v-if="marker" class="exit-badge">{{ marker }}</span>
+            </span>
+          </div>
+
+          <div v-for="(row, rowIdx) in rowsNumber" :key="row" class="seat-row" :class="{ 'row-aisle-gap': hasAisleAfterRow(row) }">
             <span class="row-label">{{ rowLabel(row) }}</span>
-            <button
-              v-for="col in cols"
+            <span
+              v-for="(col, colIdx) in colsNumber"
               :key="`${row}-${col}`"
-              class="seat-btn"
-              :class="seatClass(row, col)"
-              :disabled="isOccupied(row, col)"
-              :title="`${rowLabel(row)}${col}座`"
-              @click="toggleSeat(row, col)"
+              class="seat-slot"
+              :class="{ 'col-aisle-gap': hasAisleAfterCol(col) }"
             >
-              {{ col }}
-            </button>
+              <button
+                v-if="!isExitSlot(row, col)"
+                class="seat-btn"
+                :class="seatClass(row, col)"
+                :disabled="isOccupied(row, col)"
+                :title="`${rowLabel(row)}${col}座`"
+                @click="toggleSeat(row, col)"
+              >
+                {{ col }}
+              </button>
+              <span v-else class="exit-badge">{{ getExitLabel(row, col) }}</span>
+            </span>
+            <!-- 行尾出口 -->
+            <span v-if="getRowEndExit(row)" class="exit-badge side-exit">{{ getRowEndExit(row) }}</span>
+          </div>
+
+          <!-- 出口标记（底部） -->
+          <div v-if="bottomExits.length" class="exit-row bottom-exits">
+            <span class="row-label"></span>
+            <span v-for="(marker, mi) in bottomExitMarkers" :key="'be-'+mi"
+              class="seat-slot" :class="{ 'slot-placeholder': !marker }">
+              <span v-if="marker" class="exit-badge">{{ marker }}</span>
+            </span>
           </div>
         </div>
       </div>
@@ -98,8 +125,82 @@ const loading = ref(true)
 const submitting = ref(false)
 const rows = ref(8)
 const cols = ref(12)
+const layoutData = ref(null)
 
 const screeningId = computed(() => route.params.screeningId)
+
+// 用于 v-for 迭代的数字数组
+const rowsNumber = computed(() => Array.from({ length: rows.value }, (_, i) => i + 1))
+const colsNumber = computed(() => Array.from({ length: cols.value }, (_, i) => i + 1))
+
+// 走道间隙：哪些列/行之后需要额外间距
+const aisleAfterCols = computed(() => {
+  if (!layoutData.value?.aisles?.afterCols) return new Set()
+  return new Set(layoutData.value.aisles.afterCols)
+})
+
+const aisleAfterRows = computed(() => {
+  if (!layoutData.value?.aisles?.afterRows) return new Set()
+  return new Set(layoutData.value.aisles.afterRows)
+})
+
+// 出口集合：Map<"row-col", label>
+const exitMap = computed(() => {
+  const map = new Map()
+  if (!layoutData.value?.exits) return map
+  for (const exit of layoutData.value.exits) {
+    map.set(`${exit.row}-${exit.col}`, exit.label)
+  }
+  return map
+})
+
+// 顶/底出口（col 为 0 或超出范围，表示网格外）
+const topExits = computed(() => {
+  if (!layoutData.value?.exits) return []
+  return layoutData.value.exits.filter(e => e.row === 0)
+})
+const bottomExits = computed(() => {
+  if (!layoutData.value?.exits) return []
+  return layoutData.value.exits.filter(e => e.row > rows.value)
+})
+
+// 构建顶/底部出口标记数组（与列对齐）
+const topExitMarkers = computed(() => {
+  const markers = new Array(cols.value).fill(null)
+  for (const e of topExits.value) {
+    const ci = e.col - 1
+    if (ci >= 0 && ci < cols.value) markers[ci] = e.label
+  }
+  return markers
+})
+const bottomExitMarkers = computed(() => {
+  const markers = new Array(cols.value).fill(null)
+  for (const e of bottomExits.value) {
+    const ci = e.col - 1
+    if (ci >= 0 && ci < cols.value) markers[ci] = e.label
+  }
+  return markers
+})
+
+function hasAisleAfterCol(c) {
+  return aisleAfterCols.value.has(c)
+}
+
+function hasAisleAfterRow(r) {
+  return aisleAfterRows.value.has(r)
+}
+
+function isExitSlot(r, c) {
+  return exitMap.value.has(`${r}-${c}`)
+}
+
+function getExitLabel(r, c) {
+  return exitMap.value.get(`${r}-${c}`) || ''
+}
+
+function getRowEndExit(r) {
+  return exitMap.value.get(`${r}-0`) || ''
+}
 
 function rowLabel(r) {
   return `${r}排`
@@ -114,12 +215,14 @@ function isOccupied(r, c) {
 }
 
 function seatClass(r, c) {
+  if (isExitSlot(r, c)) return ''
   if (isSelected(r, c)) return 'selected'
   if (isOccupied(r, c)) return 'sold'
   return 'available'
 }
 
 function toggleSeat(r, c) {
+  if (isExitSlot(r, c)) return
   const label = `${rowLabel(r)}${c}座`
   if (occupiedSeats.value.includes(label)) return
   const idx = selectedSeats.value.indexOf(label)
@@ -144,6 +247,20 @@ async function fetchSeats() {
     const res = await api.get(`/orders/screening/${screeningId.value}/seats`)
     occupiedSeats.value = res.data || []
   } catch { /* silent */ }
+}
+
+async function loadHallLayout(hallNumber) {
+  try {
+    const res = await api.get('/hall-layouts/by-hall', { params: { hallNumber } })
+    const layout = res.data
+    rows.value = layout.rowsNum || 8
+    cols.value = layout.colsNum || 12
+    layoutData.value = layout.layoutJson ? JSON.parse(layout.layoutJson) : null
+  } catch {
+    rows.value = 8
+    cols.value = 12
+    layoutData.value = null
+  }
 }
 
 const { pause, resume } = useIntervalFn(fetchSeats, 8000, { immediate: false })
@@ -183,8 +300,10 @@ onMounted(async () => {
     const mRes = await api.get(`/movies/${screening.value.movieId}`)
     movie.value = mRes.data
 
-    rows.value = Math.min(Math.ceil(screening.value.totalSeats / cols.value), 12)
-    cols.value = Math.min(cols.value, Math.ceil(screening.value.totalSeats / rows.value))
+    // 根据场次的 hallNumber 加载影厅布局
+    if (screening.value.hallNumber) {
+      await loadHallLayout(screening.value.hallNumber)
+    }
   } catch {
     message.error('加载场次失败')
   }
@@ -258,10 +377,20 @@ onUnmounted(() => {
 
 .seat-row { display: flex; align-items: center; gap: 5px; }
 
+.seat-row.row-aisle-gap { margin-bottom: 12px; }
+
 .row-label {
   width: 36px; text-align: right; font-size: 0.72rem;
   color: #e0e0e0; margin-right: 6px; flex-shrink: 0;
 }
+
+/* 座位槽位容器 */
+.seat-slot {
+  width: 34px; height: 30px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.seat-slot.col-aisle-gap { margin-right: 12px; }
 
 .seat-btn {
   width: 34px; height: 30px; border-radius: 4px 4px 10px 10px;
@@ -269,7 +398,7 @@ onUnmounted(() => {
   background: #222;
   color: #e0e0e0;
   text-align: center; font-size: 0.7rem; cursor: pointer;
-  transition: all 0.18s ease; outline: none; flex-shrink: 0;
+  transition: all 0.18s ease; outline: none;
   padding: 0; line-height: 30px;
 }
 
@@ -287,6 +416,29 @@ onUnmounted(() => {
   background: #444; border-color: #666; color: #999;
   cursor: not-allowed; opacity: 0.6;
 }
+
+/* 出口标记 */
+.exit-badge {
+  font-size: 0.62rem; color: #81C784;
+  background: rgba(129,199,132,0.12);
+  border: 1px dashed #4CAF50;
+  border-radius: 4px; padding: 2px 6px;
+  white-space: nowrap; text-align: center;
+  display: inline-block;
+}
+
+.side-exit {
+  margin-left: 8px; flex-shrink: 0;
+}
+
+.exit-row {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 0;
+}
+
+.exit-row .row-label { visibility: hidden; }
+
+.slot-placeholder { visibility: hidden; }
 
 /* ===== 下单栏 ===== */
 .order-summary {
@@ -307,6 +459,7 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .order-summary { flex-direction: column; align-items: stretch; padding: 12px 16px; }
   .summary-info { justify-content: space-between; }
+  .seat-slot { width: 28px; height: 26px; }
   .seat-btn { width: 28px; height: 26px; font-size: 0.65rem; line-height: 26px; }
 }
 </style>

@@ -1,11 +1,11 @@
 <template>
   <div class="admin-shell">
-    <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
+    <aside class="sidebar" :class="{ collapsed: uiStore.sidebarCollapsed }">
       <div class="sidebar-header">
         <router-link to="/admin" class="sidebar-logo">
           <span class="logo-icon">🎬</span>
           <Transition name="fade">
-            <span v-show="!sidebarCollapsed" class="logo-text">管理后台</span>
+            <span v-show="!uiStore.sidebarCollapsed" class="logo-text">管理后台</span>
           </Transition>
         </router-link>
       </div>
@@ -14,7 +14,7 @@
         v-model:value="activeKey"
         v-model:expanded-keys="expandedKeys"
         :options="menuOptions"
-        :collapsed="sidebarCollapsed"
+        :collapsed="uiStore.sidebarCollapsed"
         :collapsed-width="64"
         :collapsed-icon-size="20"
         :root-indent="18"
@@ -23,21 +23,28 @@
       />
 
       <div class="sidebar-footer">
-        <n-button text class="collapse-btn" @click="sidebarCollapsed = !sidebarCollapsed">
+        <n-button text class="collapse-btn" @click="uiStore.toggleSidebar">
           <template #icon>
-            <ChevronBackOutline v-if="!sidebarCollapsed" />
+            <ChevronBackOutline v-if="!uiStore.sidebarCollapsed" />
             <ChevronForwardOutline v-else />
           </template>
         </n-button>
       </div>
     </aside>
 
+    <div v-if="!uiStore.sidebarCollapsed" class="sidebar-overlay" @click="uiStore.setSidebarCollapsed(true)" />
+
     <div class="main-area">
       <header class="admin-header">
-        <div class="breadcrumb">
-          <slot name="breadcrumb">
-            <span>{{ pageTitle }}</span>
-          </slot>
+        <div class="header-left">
+          <n-button quaternary circle @click="uiStore.toggleSidebar" class="hamburger-btn">
+            <template #icon><n-icon><MenuOutline /></n-icon></template>
+          </n-button>
+          <div class="breadcrumb">
+            <slot name="breadcrumb">
+              <span>{{ pageTitle }}</span>
+            </slot>
+          </div>
         </div>
         <div class="header-actions">
           <span class="welcome">管理员：{{ auth.user?.name }}</span>
@@ -62,17 +69,18 @@
 import { h, ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useUiStore } from '@/stores/ui'
 import {
   AnalyticsOutline, FilmOutline, AddOutline, ListOutline,
   CalendarOutline, ImageOutline, TicketOutline, PersonOutline,
   ChevronBackOutline, ChevronForwardOutline,
-  HomeOutline, LogOutOutline
+  HomeOutline, LogOutOutline, DocumentTextOutline, MenuOutline
 } from '@vicons/ionicons5'
 
 const auth = useAuthStore()
+const uiStore = useUiStore()
 const route = useRoute()
 const router = useRouter()
-const sidebarCollapsed = ref(false)
 const activeKey = ref(route.path || '/admin')
 const expandedKeys = ref(route.path?.startsWith('/admin/movies') ? ['movie-group'] : [])
 
@@ -113,6 +121,7 @@ const menuOptions = [
   { label: '海报管理', key: '/admin/posters', icon: renderIcon(ImageOutline) },
   { label: '订单管理', key: '/admin/orders', icon: renderIcon(TicketOutline) },
   { label: '用户管理', key: '/admin/users', icon: renderIcon(PersonOutline) },
+  { label: '操作日志', key: '/admin/logs', icon: renderIcon(DocumentTextOutline) },
 ]
 
 async function doLogout() {
@@ -134,18 +143,21 @@ function goToUser() {
 .sidebar {
   width: 240px;
   min-width: 240px;
+  max-width: 240px;
   background: #0f0f0f;
   border-right: 1px solid #2d2d2d;
   display: flex;
   flex-direction: column;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: max-width 0.25s var(--ease-out-quart);
   z-index: 30;
+  will-change: max-width;
+  contain: layout style;
 }
 
 .sidebar.collapsed {
   width: 64px;
   min-width: 64px;
+  max-width: 64px;
 }
 
 .sidebar-header {
@@ -224,10 +236,29 @@ function goToUser() {
   flex-shrink: 0;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hamburger-btn {
+  display: none;
+  color: #e0e0e0;
+}
+
+.hamburger-btn:hover {
+  color: #e50914;
+}
+
 .breadcrumb {
   color: #e0e0e0;
   font-size: 0.9rem;
   font-weight: 500;
+}
+
+.sidebar-overlay {
+  display: none;
 }
 
 .header-actions {
@@ -257,5 +288,51 @@ function goToUser() {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+@media (max-width: 768px) {
+  .hamburger-btn {
+    display: inline-flex;
+  }
+
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 100;
+    width: 240px;
+    min-width: 240px;
+    transform: translateX(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.6);
+  }
+
+  .sidebar.collapsed {
+    transform: translateX(-100%);
+    width: 240px;
+    min-width: 240px;
+  }
+
+  .collapse-btn {
+    display: none;
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+  }
+
+  .admin-header {
+    padding: 0 12px;
+  }
+
+  .content-area {
+    padding: 16px;
+  }
 }
 </style>

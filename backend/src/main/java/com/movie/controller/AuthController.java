@@ -9,12 +9,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -98,6 +102,49 @@ public class AuthController {
             }
         }
         return null;
+    }
+
+    @PostMapping("/forgot-password")
+    public Result<Void> forgotPassword(@RequestParam @NotBlank String name) {
+        User user = userService.lambdaQuery()
+                .eq(User::getName, name)
+                .one();
+        if (user != null) {
+            String token = UUID.randomUUID().toString();
+            user.setResetToken(BCrypt.hashpw(token, BCrypt.gensalt()));
+            user.setResetTokenExpire(LocalDateTime.now().plusMinutes(30));
+            userService.updateById(user);
+        }
+        return Result.success("如果该账户存在，重置链接已发送", null);
+    }
+
+    @PostMapping("/reset-password")
+    public Result<Void> resetPassword(@RequestParam String token,
+                                       @RequestParam @NotBlank String newPassword) {
+        if (token == null || token.isBlank()) {
+            return Result.error(400, "token不能为空");
+        }
+        User user = userService.lambdaQuery()
+                .isNotNull(User::getResetToken)
+                .list()
+                .stream()
+                .filter(u -> BCrypt.checkpw(token, u.getResetToken()))
+                .findFirst()
+                .orElse(null);
+        if (user == null) {
+            return Result.error(400, "无效的token");
+        }
+        if (user.getResetTokenExpire() != null && user.getResetTokenExpire().isBefore(LocalDateTime.now())) {
+            user.setResetToken(null);
+            user.setResetTokenExpire(null);
+            userService.updateById(user);
+            return Result.error(400, "token已过期");
+        }
+        user.setStudentId(BCrypt.hashpw(newPassword, BCrypt.gensalt()));
+        user.setResetToken(null);
+        user.setResetTokenExpire(null);
+        userService.updateById(user);
+        return Result.success("密码重置成功", null);
     }
 
     private void clearRememberCookies(HttpServletResponse response) {

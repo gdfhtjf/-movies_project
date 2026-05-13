@@ -69,6 +69,7 @@ const navItems = [
 
 const userMenuOptions = computed(() => {
   const items = []
+  items.push({ key: 'profile', label: '个人设置' })
   if (auth.isAdmin) {
     items.push({ key: 'admin', label: '后台管理' })
     items.push({ type: 'divider' })
@@ -78,7 +79,8 @@ const userMenuOptions = computed(() => {
 })
 
 function onUserMenuSelect(key) {
-  if (key === 'admin') router.push('/admin')
+  if (key === 'profile') router.push('/profile')
+  else if (key === 'admin') router.push('/admin')
   else if (key === 'logout') {
     auth.logout()
     router.push('/')
@@ -142,10 +144,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   font-family: var(--font-heading);
   font-size: 1.3rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #e50914, #ff9f1c);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--color-accent);
 }
 
 .nav-links { display: flex; gap: 6px; }

@@ -15,7 +15,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,8 +44,16 @@ public class ScreeningServiceImpl extends ServiceImpl<ScreeningMapper, Screening
     }
 
     private void fillMovieData(List<Screening> screenings) {
+        if (screenings.isEmpty()) {
+            return;
+        }
+        Set<Integer> movieIds = screenings.stream()
+                .map(Screening::getMovieId)
+                .collect(Collectors.toSet());
+        Map<Integer, Movie> movieMap = movieService.listByIds(movieIds).stream()
+                .collect(Collectors.toMap(Movie::getId, m -> m));
         for (Screening s : screenings) {
-            Movie movie = movieService.getById(s.getMovieId());
+            Movie movie = movieMap.get(s.getMovieId());
             if (movie != null) {
                 s.setMovieTitle(movie.getTitle());
                 if (s.getPrice() == null) {
@@ -87,6 +98,18 @@ public class ScreeningServiceImpl extends ServiceImpl<ScreeningMapper, Screening
         Page<Screening> page = page(new Page<>(current, size), wrapper);
         fillMovieData(page.getRecords());
         return page;
+    }
+
+    @Override
+    public boolean hasTimeConflict(String hallNumber, LocalDateTime startTime, LocalDateTime endTime, Integer excludeScreeningId) {
+        LambdaQueryWrapper<Screening> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Screening::getHallNumber, hallNumber)
+               .lt(Screening::getStartTime, endTime)
+               .gt(Screening::getEndTime, startTime);
+        if (excludeScreeningId != null) {
+            wrapper.ne(Screening::getId, excludeScreeningId);
+        }
+        return count(wrapper) > 0;
     }
 
     @Override

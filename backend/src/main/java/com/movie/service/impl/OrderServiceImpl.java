@@ -19,12 +19,20 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements OrderService {
+
+    public static final String STATUS_PAID = "paid";
+    public static final String STATUS_CANCELLED = "cancelled";
+    public static final String STATUS_PENDING = "pending";
+    public static final String STATUS_TICKETED = "ticketed";
+    public static final String STATUS_COMPLETED = "completed";
+    public static final String STATUS_REFUNDED = "refunded";
 
     private final ScreeningService screeningService;
     private final MovieService movieService;
@@ -89,7 +97,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
         Set<String> occupied = lambdaQuery()
                 .eq(Order::getScreeningId, screeningId)
-                .eq(Order::getStatus, "paid")
+                .eq(Order::getStatus, STATUS_PAID)
                 .list()
                 .stream()
                 .flatMap(o -> Arrays.stream(o.getSeatNumber().split(",")))
@@ -121,7 +129,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         order.setScreeningId(screeningId);
         order.setSeatNumber(String.join(",", seatNumbers));
         order.setTotalPrice(totalPrice);
-        order.setStatus("paid");
+        order.setStatus(STATUS_PENDING);
         order.setVersion(1);
         order.setCreateTime(LocalDateTime.now());
         save(order);
@@ -135,7 +143,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         if (order == null) {
             throw new RuntimeException("订单不存在");
         }
-        if (!"paid".equals(order.getStatus())) {
+        if (!STATUS_PAID.equals(order.getStatus()) && !STATUS_PENDING.equals(order.getStatus())) {
             throw new RuntimeException("该订单状态为" + order.getStatus() + "，无法取消");
         }
         if (!order.getUserId().equals(userId)) {
@@ -162,23 +170,38 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             throw new RuntimeException("系统繁忙，取消订单失败，请重试");
         }
 
-        order.setStatus("cancelled");
+        order.setStatus(STATUS_CANCELLED);
         order.setCancelTime(LocalDateTime.now());
         updateById(order);
     }
 
     private void fillOrderDetails(List<Order> orders) {
+        if (orders.isEmpty()) {
+            return;
+        }
+        // 批量查询：收集所有movieId/screeningId/userId，一次性查询
+        Set<Integer> movieIds = orders.stream().map(Order::getMovieId).collect(Collectors.toSet());
+        Set<Integer> screeningIds = orders.stream().map(Order::getScreeningId).collect(Collectors.toSet());
+        Set<Integer> userIds = orders.stream().map(Order::getUserId).collect(Collectors.toSet());
+
+        Map<Integer, Movie> movieMap = movieService.listByIds(movieIds).stream()
+                .collect(Collectors.toMap(Movie::getId, m -> m));
+        Map<Integer, Screening> screeningMap = screeningService.listByIds(screeningIds).stream()
+                .collect(Collectors.toMap(Screening::getId, s -> s));
+        Map<Integer, com.movie.entity.User> userMap = userService.listByIds(userIds).stream()
+                .collect(Collectors.toMap(com.movie.entity.User::getId, u -> u));
+
         for (Order order : orders) {
-            Movie movie = movieService.getById(order.getMovieId());
+            Movie movie = movieMap.get(order.getMovieId());
             if (movie != null) {
                 order.setMovieTitle(movie.getTitle());
             }
-            Screening screening = screeningService.getById(order.getScreeningId());
+            Screening screening = screeningMap.get(order.getScreeningId());
             if (screening != null) {
                 order.setHallNumber(screening.getHallNumber());
                 order.setShowTime(screening.getStartTime());
             }
-            com.movie.entity.User user = userService.getById(order.getUserId());
+            com.movie.entity.User user = userMap.get(order.getUserId());
             if (user != null) {
                 order.setUserName(user.getName());
             }

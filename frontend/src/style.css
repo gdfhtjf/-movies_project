@@ -1,6 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
 
 :root {
+  /* --- Color Tokens --- */
   --color-bg-primary: #121212;
   --color-bg-secondary: #1c1c1c;
   --color-bg-card: #1c1c1c;
@@ -10,12 +11,52 @@
   --color-accent-gold: #ffb74d;
   --color-text: #ffffff;
   --color-text-muted: #e0e0e0;
-  --font-heading: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --font-body: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+
+  /* --- Typography --- */
+  --font-heading: 'DM Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-body: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  /* --- Spacing Scale --- */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+  --space-section: 5rem;
+
+  /* --- Easing --- */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+
+  /* --- Shadows --- */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --shadow-accent: 0 4px 20px rgba(229, 9, 20, 0.2);
+  --shadow-gold: 0 4px 20px rgba(255, 159, 28, 0.15);
+
+  /* --- Gradients --- */
   --gradient-primary: linear-gradient(135deg, #e50914 0%, #ff5a5f 100%);
   --gradient-gold: linear-gradient(135deg, #ffb74d 0%, #ffd54f 100%);
   --gradient-card: linear-gradient(180deg, #1c1c1c 0%, #1a1a1a 100%);
   --gradient-overlay-bottom: linear-gradient(to top, #0f0f0f 0%, transparent 60%);
+
+  /* --- Semantic Colors --- */
   --color-success: #81C784;
   --color-success-bg: rgba(129, 199, 132, 0.2);
   --color-warning: #FFB74D;
@@ -26,11 +67,6 @@
   --color-info: #90CAF9;
   --color-info-bg: rgba(144, 202, 249, 0.2);
   --color-info-border: rgba(144, 202, 249, 0.4);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.45);
-  --shadow-accent: 0 4px 20px rgba(229, 9, 20, 0.25);
-  --shadow-gold: 0 4px 20px rgba(255, 159, 28, 0.2);
 }
 
 * {
@@ -47,12 +83,26 @@ html {
 
 body {
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: var(--text-base);
   font-weight: 400;
-  line-height: 1.6;
+  line-height: var(--leading-normal);
   color: var(--color-text);
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  line-height: var(--leading-tight);
+  font-weight: 600;
+}
+
+h1 { font-size: var(--text-4xl); letter-spacing: -0.02em; }
+h2 { font-size: var(--text-3xl); }
+h3 { font-size: var(--text-2xl); }
+h4 { font-size: var(--text-xl); }
+h5 { font-size: var(--text-lg); }
+h6 { font-size: var(--text-base); }
 
 #app {
   background: var(--color-bg-primary);
@@ -62,7 +112,7 @@ body {
 a {
   color: var(--color-accent-gold);
   text-decoration: none;
-  transition: color 0.2s;
+  transition: color 0.15s var(--ease-out-quart);
 }
 
 a:hover {
@@ -166,8 +216,12 @@ input:focus, textarea:focus, .n-input--focus {
   outline: none;
 }
 
-/* ===== Naive UI 全局强制高对比度文字 ===== */
-/* 覆盖 Naive UI 内部可能存在的黑色/暗色文字 */
+/* ===== Naive UI 暗色主题文字补丁 =====
+ * Naive UI themeOverrides 不覆盖所有内部 CSS 类（如 .n-input__input-el、
+ * .n-data-table-td 等）。暗色主题下这些内部元素默认仍为深色文字，
+ * 在 #121212 背景上不可见。以下规则强制所有内部文字为白色。
+ * 升级 Naive UI 后需验证这些规则是否仍然必要。
+ */
 
 /* 原生 input/textarea/select */
 .n-input input,

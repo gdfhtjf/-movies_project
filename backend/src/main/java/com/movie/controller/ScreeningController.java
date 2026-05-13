@@ -83,6 +83,12 @@ public class ScreeningController {
                 && screening.getEndTime().isBefore(screening.getStartTime())) {
             return Result.error(400, "结束时间不能早于开始时间");
         }
+        // 检查同一影厅时间冲突
+        if (screening.getHallNumber() != null && screening.getStartTime() != null && screening.getEndTime() != null) {
+            if (screeningService.hasTimeConflict(screening.getHallNumber(), screening.getStartTime(), screening.getEndTime(), null)) {
+                return Result.error(409, "该影厅在该时间段已有场次安排");
+            }
+        }
         if (screening.getStatus() == null || screening.getStatus().isEmpty()) {
             screening.setStatus("AVAILABLE");
         }
@@ -103,6 +109,16 @@ public class ScreeningController {
         Screening existing = screeningService.getById(id);
         if (existing == null) {
             return Result.error(404, "场次不存在");
+        }
+
+        // 检查同一影厅时间冲突（使用请求中的值，若未提供则沿用现有值）
+        String effectiveHallNumber = screening.getHallNumber() != null ? screening.getHallNumber() : existing.getHallNumber();
+        LocalDateTime effectiveStartTime = screening.getStartTime() != null ? screening.getStartTime() : existing.getStartTime();
+        LocalDateTime effectiveEndTime = screening.getEndTime() != null ? screening.getEndTime() : existing.getEndTime();
+        if (effectiveHallNumber != null && effectiveStartTime != null && effectiveEndTime != null) {
+            if (screeningService.hasTimeConflict(effectiveHallNumber, effectiveStartTime, effectiveEndTime, id)) {
+                return Result.error(409, "该影厅在该时间段已有场次安排");
+            }
         }
 
         if (screening.getTotalSeats() != null) {

@@ -48,10 +48,11 @@
       <n-spin :show="loading">
         <n-data-table
           :columns="columns"
-          :data="tableData"
+          :data="sortedTableData"
           :pagination="pagination"
           :row-key="(r) => r.id"
           :loading="loading"
+          @update:sorter="handleSorterChange"
         />
       </n-spin>
     </n-card>
@@ -177,6 +178,29 @@ const pagination = reactive({
 })
 
 const tableData = ref([])
+const sortState = ref(null)
+
+const sortedTableData = computed(() => {
+  const data = [...tableData.value]
+  if (!sortState.value || !sortState.value.order) return data
+  const { columnKey, order } = sortState.value
+  return data.sort((a, b) => {
+    const va = a[columnKey]
+    const vb = b[columnKey]
+    if (columnKey === 'createTime') {
+      return order === 'ascend'
+        ? new Date(va || 0) - new Date(vb || 0)
+        : new Date(vb || 0) - new Date(va || 0)
+    }
+    return order === 'ascend'
+      ? String(va || '').localeCompare(String(vb || ''), 'zh')
+      : String(vb || '').localeCompare(String(va || ''), 'zh')
+  })
+})
+
+function handleSorterChange(sorter) {
+  sortState.value = sorter
+}
 
 const roleOptions = [
   { label: '普通用户', value: 'user' },
@@ -185,7 +209,7 @@ const roleOptions = [
 
 const columns = computed(() => [
   { title: 'ID', key: 'id', width: 80 },
-  { title: '用户名', key: 'name', minWidth: 150 },
+  { title: '用户名', key: 'name', minWidth: 150, sorter: true },
   { 
     title: '角色', 
     key: 'role', 
@@ -194,7 +218,7 @@ const columns = computed(() => [
       { default: () => row.role === 'admin' ? '管理员' : '普通用户' }
     ),
   },
-  { title: '注册时间', key: 'createTime', minWidth: 180 },
+  { title: '注册时间', key: 'createTime', minWidth: 180, sorter: true },
   {
     title: '操作', key: 'actions', width: 220, fixed: 'right',
     render: (row) =>

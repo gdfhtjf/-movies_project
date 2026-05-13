@@ -2,12 +2,15 @@ package com.movie.exception;
 
 import com.movie.common.Result;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.stream.Collectors;
@@ -29,6 +32,24 @@ public class GlobalExceptionHandler {
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.joining("; "));
         return Result.error(400, msg);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public Result<?> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.warn("数据完整性冲突: {}", ex.getMessage());
+        return Result.error(409, "数据冲突，该记录可能已存在或正在被其他操作使用");
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public Result<?> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        log.warn("参数类型错误: {} 应为 {}", ex.getName(), ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown");
+        return Result.error(400, "参数类型错误: " + ex.getName());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public Result<?> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        log.warn("JSON解析错误: {}", ex.getMessage());
+        return Result.error(400, "请求数据格式错误，请检查 JSON 格式");
     }
 
     @ExceptionHandler(RuntimeException.class)

@@ -36,11 +36,12 @@
 
     <n-data-table
       :columns="visibleColumns"
-      :data="orders"
+      :data="sortedOrders"
       :loading="loading"
       :row-key="(r) => r.id"
       :bordered="false"
       striped
+      @update:sorter="handleSorterChange"
     />
 
     <div style="display:flex; justify-content:flex-end; margin-top:16px">
@@ -94,6 +95,27 @@ const orders = ref([])
 const loading = ref(false)
 const showStatusModal = ref(false)
 const currentOrder = ref(null)
+const sortState = ref(null)
+
+const sortedOrders = computed(() => {
+  const data = [...orders.value]
+  if (!sortState.value || !sortState.value.order) return data
+  const { columnKey, order } = sortState.value
+  return data.sort((a, b) => {
+    const va = a[columnKey]
+    const vb = b[columnKey]
+    if (columnKey === 'totalPrice') {
+      return order === 'ascend' ? (va ?? 0) - (vb ?? 0) : (vb ?? 0) - (va ?? 0)
+    }
+    return order === 'ascend'
+      ? new Date(va || 0) - new Date(vb || 0)
+      : new Date(vb || 0) - new Date(va || 0)
+  })
+})
+
+function handleSorterChange(sorter) {
+  sortState.value = sorter
+}
 
 const searchForm = reactive({
   keyword: '',
@@ -113,26 +135,25 @@ const pagination = reactive({
 
 const STATUS_MAP = {
   paid: { label: '已支付', type: 'success' },
-  TICKETED: { label: '已出票', type: 'success' },
-  COMPLETED: { label: '已完成', type: 'info' },
   pending: { label: '待支付', type: 'warning' },
+  ticketed: { label: '已出票', type: 'success' },
+  completed: { label: '已完成', type: 'info' },
   cancelled: { label: '已取消', type: 'default' },
-  CANCELLED: { label: '已取消', type: 'default' },
-  REFUNDED: { label: '已退款', type: 'default' }
+  refunded: { label: '已退款', type: 'default' }
 }
 
 const statusOptions = [
   { label: '全部', value: '' },
   { label: '待支付', value: 'pending' },
   { label: '已支付', value: 'paid' },
-  { label: '已出票', value: 'TICKETED' },
-  { label: '已完成', value: 'COMPLETED' },
-  { label: '已取消', value: 'CANCELLED' },
-  { label: '已退款', value: 'REFUNDED' }
+  { label: '已出票', value: 'ticketed' },
+  { label: '已完成', value: 'completed' },
+  { label: '已取消', value: 'cancelled' },
+  { label: '已退款', value: 'refunded' }
 ]
 
 function getStatusInfo(status) {
-  return STATUS_MAP[status] || { label: status, type: 'default' }
+  return STATUS_MAP[status?.toLowerCase()] || { label: status, type: 'default' }
 }
 
 const visibleColumns = computed(() => [
@@ -141,9 +162,9 @@ const visibleColumns = computed(() => [
   { key: 'userName', title: '用户', width: 100 },
   { key: 'seatNumber', title: '座位', width: 120 },
   { key: 'showTime', title: '放映时间', width: 170, render: (row) => row.showTime ? row.showTime.replace('T', ' ').substring(0, 16) : '' },
-  { key: 'totalPrice', title: '金额', width: 100, render: (row) => h('span', { style: { color: '#ff9f1c', fontWeight: '700' } }, '¥' + Number(row.totalPrice || 0).toFixed(2)) },
+  { key: 'totalPrice', title: '金额', width: 100, sorter: true, render: (row) => h('span', { style: { color: '#ff9f1c', fontWeight: '700' } }, '¥' + Number(row.totalPrice || 0).toFixed(2)) },
   { key: 'status', title: '状态', width: 100, render: (row) => { const info = getStatusInfo(row.status); return h(NTag, { type: info.type, size: 'small', bordered: false }, () => info.label) } },
-  { key: 'createTime', title: '下单时间', width: 170, render: (row) => row.createTime ? row.createTime.replace('T', ' ').substring(0, 16) : '' },
+  { key: 'createTime', title: '下单时间', width: 170, sorter: true, render: (row) => row.createTime ? row.createTime.replace('T', ' ').substring(0, 16) : '' },
   { title: '操作', key: 'actions', width: 180, fixed: 'right', render: (row) => h('div', { style: { display: 'flex', gap: '6px' } }, [
     h(NButton, { size: 'small', type: 'info', text: true, onClick: () => openStatusModal(row) }, () => '修改状态'),
     h(NButton, { size: 'small', type: 'error', text: true, onClick: () => handleDelete(row) }, () => '删除')

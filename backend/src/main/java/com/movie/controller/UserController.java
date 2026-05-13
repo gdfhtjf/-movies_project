@@ -88,4 +88,33 @@ public class UserController {
         userService.changePassword(id, body.get("oldPassword"), body.get("newPassword"));
         return Result.success("密码修改成功", null);
     }
+
+    @PutMapping("/{id}/profile")
+    public Result<User> updateProfile(@PathVariable Integer id,
+                                       @RequestBody Map<String, String> body,
+                                       HttpSession session) {
+        User currentUser = (User) session.getAttribute("user");
+        if (currentUser == null) {
+            return Result.error(401, "请先登录");
+        }
+        if (!currentUser.getId().equals(id) && !"admin".equals(currentUser.getRole())) {
+            return Result.error(403, "无权修改他人资料");
+        }
+        User existing = userService.getById(id);
+        if (existing == null) {
+            return Result.error(404, "用户不存在");
+        }
+        if (body.containsKey("name")) {
+            existing.setName(body.get("name"));
+        }
+        if (body.containsKey("email")) {
+            existing.setEmail(body.get("email"));
+        }
+        if (body.containsKey("phone")) {
+            existing.setPhone(body.get("phone"));
+        }
+        userService.updateById(existing);
+        existing.setStudentId(null);
+        return Result.success("资料更新成功", existing);
+    }
 }

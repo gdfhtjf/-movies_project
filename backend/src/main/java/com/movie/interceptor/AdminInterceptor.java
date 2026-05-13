@@ -12,7 +12,7 @@ public class AdminInterceptor implements HandlerInterceptor {
 
     private static final String[] PUBLIC_GET_PREFIXES = {
             "/api/movies", "/api/screenings", "/api/posters",
-            "/api/orders/screening"
+            "/api/orders/screening", "/api/hall-layouts", "/api/genres"
     };
 
     @Override

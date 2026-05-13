@@ -145,10 +145,7 @@ onMounted(() => {
 .page-title {
   font-size: 28px;
   font-weight: 800;
-  background: linear-gradient(135deg, #ffffff 0%, #ff6b9d 50%, #e50914 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--color-text);
   margin: 0;
 }
 

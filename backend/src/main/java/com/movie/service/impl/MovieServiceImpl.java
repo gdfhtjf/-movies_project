@@ -3,10 +3,14 @@ package com.movie.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.movie.entity.Genre;
 import com.movie.entity.Movie;
+import com.movie.entity.MovieGenre;
 import com.movie.entity.Order;
 import com.movie.entity.Screening;
+import com.movie.mapper.MovieGenreMapper;
 import com.movie.mapper.MovieMapper;
+import com.movie.service.GenreService;
 import com.movie.service.MovieService;
 import com.movie.service.OrderService;
 import com.movie.service.ScreeningService;
@@ -25,11 +29,17 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
 
     private final ScreeningService screeningService;
     private final OrderService orderService;
+    private final GenreService genreService;
+    private final MovieGenreMapper movieGenreMapper;
 
     public MovieServiceImpl(@Lazy ScreeningService screeningService,
-                            @Lazy OrderService orderService) {
+                            @Lazy OrderService orderService,
+                            @Lazy GenreService genreService,
+                            @Lazy MovieGenreMapper movieGenreMapper) {
         this.screeningService = screeningService;
         this.orderService = orderService;
+        this.genreService = genreService;
+        this.movieGenreMapper = movieGenreMapper;
     }
 
     @Override
@@ -58,7 +68,9 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
             wrapper.le(Movie::getReleaseDate, endDate);
         }
         wrapper.orderByDesc(Movie::getCreateTime);
-        return page(new Page<>(current, size), wrapper);
+        Page<Movie> result = page(new Page<>(current, size), wrapper);
+        fillGenreNames(result.getRecords());
+        return result;
     }
 
     @Override
@@ -90,5 +102,35 @@ public class MovieServiceImpl extends ServiceImpl<MovieMapper, Movie> implements
 
         // 最后删除电影
         removeById(id);
+    }
+
+    private void fillGenreNames(List<Movie> movies) {
+        if (movies.isEmpty()) {
+            return;
+        }
+        java.util.Set<Integer> movieIds = movies.stream()
+                .map(Movie::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.List<MovieGenre> allMappings = movieGenreMapper.selectList(
+                new LambdaQueryWrapper<MovieGenre>().in(MovieGenre::getMovieId, movieIds));
+        java.util.Set<Integer> allGenreIds = allMappings.stream()
+                .map(MovieGenre::getGenreId)
+                .collect(java.util.stream.Collectors.toSet());
+        final java.util.Map<Integer, String> genreNameMap;
+        if (!allGenreIds.isEmpty()) {
+            genreNameMap = genreService.listByIds(allGenreIds).stream()
+                    .collect(java.util.stream.Collectors.toMap(Genre::getId, Genre::getName));
+        } else {
+            genreNameMap = java.util.Map.of();
+        }
+        java.util.Map<Integer, java.util.List<String>> movieGenreMap = allMappings.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        MovieGenre::getMovieId,
+                        java.util.stream.Collectors.mapping(
+                                mg -> genreNameMap.getOrDefault(mg.getGenreId(), ""),
+                                java.util.stream.Collectors.toList())));
+        for (Movie movie : movies) {
+            movie.setGenreNames(movieGenreMap.getOrDefault(movie.getId(), java.util.List.of()));
+        }
     }
 }
