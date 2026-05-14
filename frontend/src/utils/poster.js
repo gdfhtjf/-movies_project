@@ -34,6 +34,20 @@ function buildUrl(id, w, h) {
 }
 
 /**
+ * 获取该电影对应的 picsum 兜底图 URL（不依赖后端文件）
+ */
+function getPicsumFallback(title, width) {
+  const height = Math.round(width * 1.43)
+  const entry = moviePosterMap[title]
+  if (entry) {
+    return buildUrl(entry.id, width, height)
+  }
+  const hash = title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  const id = FALLBACK_IDS[hash % FALLBACK_IDS.length]
+  return buildUrl(id, width, height)
+}
+
+/**
  * 获取电影海报
  * @param {string} title - 电影标题
  * @param {string|null} posterPath - 后端上传的海报路径
@@ -45,17 +59,14 @@ export function getMoviePoster(title, posterPath = null, width = 600) {
     const base = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : ''
     return `${base}/uploads/${posterPath}`
   }
+  return getPicsumFallback(title, width)
+}
 
-  const height = Math.round(width * 1.43)
-  const entry = moviePosterMap[title]
-
-  if (entry) {
-    return buildUrl(entry.id, width, height)
-  }
-
-  const hash = title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  const id = FALLBACK_IDS[hash % FALLBACK_IDS.length]
-  return buildUrl(id, width, height)
+/**
+ * 获取电影兜底海报（后端图片加载失败时使用）
+ */
+export function getMovieFallback(title) {
+  return getPicsumFallback(title, 600)
 }
 
 /**

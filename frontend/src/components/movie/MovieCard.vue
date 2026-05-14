@@ -20,7 +20,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { getMoviePoster } from '@/utils/poster'
+import { getMoviePoster, getMovieFallback } from '@/utils/poster'
 
 const props = defineProps({
   movie: { type: Object, required: true }
@@ -35,7 +35,7 @@ function handleClick() {
 }
 
 function handleImgError(e) {
-  e.target.src = 'https://picsum.photos/400/600?random'
+  e.target.src = getMovieFallback(props.movie.title)
 }
 </script>
 

@@ -53,7 +53,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { getMoviePoster } from '@/utils/poster'
+import { getMoviePoster, getMovieFallback } from '@/utils/poster'
 
 const props = defineProps({
   movie: {
@@ -73,13 +73,12 @@ const posterUrl = computed(() => {
 })
 
 function handleImageError(e) {
-  e.target.src = 'https://picsum.photos/400/600?random'
+  e.target.src = getMovieFallback(props.movie.title)
 }
 
 function handleClick() {
   if (props.loading || !props.movie?.id) return
   
-  console.log('[SimilarMovieCard] 点击电影:', props.movie)
   router.push(`/detail/${props.movie.id}`)
 }
 
