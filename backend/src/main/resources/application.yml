@@ -13,9 +13,6 @@ spring:
     store-type: jdbc
     jdbc:
       initialize-schema: never
-    cookie:
-      same-site: none
-      secure: true
   servlet:
     multipart:
       max-file-size: 5MB
