@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-05-14T09:55:43.736Z",
+  "mode": "headless",
+  "workerType": "audit",
+  "model": "haiku",
+  "durationMs": 82,
+  "executionId": "audit_1778752543654_maptir",
+  "success": false,
+  "findings": null,
+  "rawOutputPreview": "",
+  "rawOutputLength": 0
+}

@@ -45,3 +45,15 @@ backend/movie_uploads/*
 # .mvn/
 # mvnw
 # mvnw.cmd
+
+# --- Ruflo / Claude-Flow ---
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/metrics/
+.claude-flow/sessions/
+.claude-flow/swarm/
+.claude-flow/daemon-state.json
+.swarm/
+.ruvector.db
+mcp.json
+mcp-local.json

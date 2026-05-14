@@ -170,7 +170,11 @@ class Javaweb0001ApplicationTests {
         Screening screening = new Screening();
         screening.setMovieId(testMovieId);
         screening.setHallNumber("测试影厅1");
-        screening.setShowTime(LocalDateTime.now().plusDays(3));
+        screening.setStartTime(LocalDateTime.now().plusDays(3));
+        screening.setEndTime(LocalDateTime.now().plusDays(3).plusHours(2));
+        screening.setPrice(new java.math.BigDecimal("35.00"));
+        screening.setStatus("AVAILABLE");
+        screening.setShowDate(LocalDateTime.now().plusDays(3));
         screening.setTotalSeats(100);
         screening.setRemainingSeats(100);
         screening.setVersion(1);
@@ -190,7 +194,7 @@ class Javaweb0001ApplicationTests {
     @Test
     @Order(22)
     void testScreeningPage() {
-        Page<Screening> page = screeningService.pageScreenings(1, 10, null);
+        Page<Screening> page = screeningService.pageScreenings(1, 10, null, null, null);
         assertNotNull(page);
     }
 
@@ -295,7 +299,11 @@ class Javaweb0001ApplicationTests {
         Screening s = new Screening();
         s.setMovieId(testMovieId);
         s.setHallNumber("临时影厅");
-        s.setShowTime(LocalDateTime.now().plusDays(10));
+        s.setStartTime(LocalDateTime.now().plusDays(10));
+        s.setEndTime(LocalDateTime.now().plusDays(10).plusHours(2));
+        s.setPrice(new java.math.BigDecimal("35.00"));
+        s.setStatus("AVAILABLE");
+        s.setShowDate(LocalDateTime.now().plusDays(10));
         s.setTotalSeats(50);
         s.setRemainingSeats(50);
         s.setVersion(1);
@@ -309,13 +317,13 @@ class Javaweb0001ApplicationTests {
     void testScreeningDeleteWithOrders() {
         // 测试级联删除：删除场次时会删除该场次的所有订单
         long beforeCount = orderService.lambdaQuery()
-                .eq(Order::getScreeningId, testScreeningId)
+                .eq(com.movie.entity.Order::getScreeningId, testScreeningId)
                 .count();
         assertTrue(beforeCount > 0);
         screeningService.deleteScreeningWithCheck(testScreeningId);
         assertTrue(screeningService.getById(testScreeningId) == null);
         long afterCount = orderService.lambdaQuery()
-                .eq(Order::getScreeningId, testScreeningId)
+                .eq(com.movie.entity.Order::getScreeningId, testScreeningId)
                 .count();
         assertEquals(0, afterCount);
     }
