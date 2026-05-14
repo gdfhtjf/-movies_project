@@ -42,7 +42,8 @@ function buildUrl(id, w, h) {
  */
 export function getMoviePoster(title, posterPath = null, width = 600) {
   if (posterPath) {
-    return `/uploads/${posterPath}`
+    const base = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : ''
+    return `${base}/uploads/${posterPath}`
   }
 
   const height = Math.round(width * 1.43)
