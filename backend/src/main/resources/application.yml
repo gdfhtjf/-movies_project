@@ -13,6 +13,9 @@ spring:
     store-type: jdbc
     jdbc:
       initialize-schema: never
+    cookie:
+      same-site: none
+      secure: true
   servlet:
     multipart:
       max-file-size: 5MB
@@ -36,7 +39,3 @@ file:
 server:
   port: ${PORT:8080}
   servlet:
-    session:
-      cookie:
-        same-site: none
-        secure: true
