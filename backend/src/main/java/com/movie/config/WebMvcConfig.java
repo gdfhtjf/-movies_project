@@ -28,6 +28,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .allowedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(3600);
+
+        registry.addMapping("/uploads/**")
+                .allowedOriginPatterns("*")
+                .allowedMethods("GET", "OPTIONS")
+                .allowCredentials(false)
+                .maxAge(3600);
     }
 
     @Override
