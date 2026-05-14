@@ -5,6 +5,7 @@ import com.movie.filter.CorsFilter;
 import com.movie.filter.LoginCheckFilter;
 import com.movie.filter.RateLimitFilter;
 import com.movie.filter.RequestLogFilter;
+import com.movie.filter.SameSiteFilter;
 import com.movie.filter.SensitiveWordFilter;
 import com.movie.filter.XssProtectionFilter;
 import com.movie.listener.AppStartupListener;
@@ -105,6 +106,15 @@ public class ServletComponentConfig {
         reg.setFilter(new RateLimitFilter());
         reg.addUrlPatterns("/api/*");
         reg.setOrder(7);
+        return reg;
+    }
+
+    @Bean
+    public FilterRegistrationBean<SameSiteFilter> sameSiteFilter() {
+        FilterRegistrationBean<SameSiteFilter> reg = new FilterRegistrationBean<>();
+        reg.setFilter(new SameSiteFilter());
+        reg.addUrlPatterns("/*");
+        reg.setOrder(8);
         return reg;
     }
 }
