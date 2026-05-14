@@ -4,7 +4,7 @@ import { createDiscreteApi } from 'naive-ui'
 const { message } = createDiscreteApi(['message'])
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 10000,
   withCredentials: true,
 })
