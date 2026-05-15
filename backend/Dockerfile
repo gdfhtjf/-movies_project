@@ -1,13 +1,12 @@
-FROM eclipse-temurin:17-jdk AS build
+FROM alpine:3.21 AS build
+RUN apk add --no-cache openjdk17-jdk maven
 WORKDIR /app
 COPY pom.xml .
-COPY mvnw .
-COPY .mvn ./.mvn
-RUN ./mvnw dependency:go-offline -B -q 2>/dev/null || true
 COPY src ./src
-RUN ./mvnw package -DskipTests -B -q
+RUN mvn package -DskipTests -B -q
 
-FROM eclipse-temurin:17-jre
+FROM alpine:3.21
+RUN apk add --no-cache openjdk17-jre-headless
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
