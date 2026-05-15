@@ -8,6 +8,6 @@ public class ViewController {
 
     @GetMapping("/")
     public String index() {
-        return "forward:/index.html";
+        return "redirect:https://gdfhtjf.github.io/-movies_project/";
     }
 }
