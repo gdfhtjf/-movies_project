@@ -7,6 +7,7 @@ import com.movie.filter.RateLimitFilter;
 import com.movie.filter.RequestLogFilter;
 import com.movie.filter.SameSiteFilter;
 import com.movie.filter.SensitiveWordFilter;
+import com.movie.filter.SpaFallbackFilter;
 import com.movie.filter.XssProtectionFilter;
 import com.movie.listener.AppStartupListener;
 import com.movie.listener.ContextAttributeChangeListener;
@@ -115,6 +116,16 @@ public class ServletComponentConfig {
         reg.setFilter(new SameSiteFilter());
         reg.addUrlPatterns("/*");
         reg.setOrder(8);
+        return reg;
+    }
+
+    @Bean
+    public FilterRegistrationBean<SpaFallbackFilter> spaFallbackFilter() {
+        FilterRegistrationBean<SpaFallbackFilter> reg = new FilterRegistrationBean<>();
+        reg.setFilter(new SpaFallbackFilter());
+        reg.addUrlPatterns("/*");
+        reg.setDispatcherTypes(jakarta.servlet.DispatcherType.REQUEST);
+        reg.setOrder(9);
         return reg;
     }
 }
