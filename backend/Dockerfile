@@ -1,9 +1,11 @@
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM eclipse-temurin:17-jdk AS build
 WORKDIR /app
 COPY pom.xml .
-RUN mvn dependency:go-offline -B -q
+COPY mvnw .
+COPY .mvn ./.mvn
+RUN ./mvnw dependency:go-offline -B -q 2>/dev/null || true
 COPY src ./src
-RUN mvn package -DskipTests -B -q
+RUN ./mvnw package -DskipTests -B -q
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
