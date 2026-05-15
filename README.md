@@ -128,6 +128,56 @@ npm run dev
 - 低端设备自动禁用粒子特效
 - ErrorBoundary 全局错误边界 + ARIA 无障碍
 
+## 部署
+
+### Render（生产环境）
+
+应用通过 Docker 部署到 Render，前端构建后嵌入 Spring Boot 的 `static/` 目录，以统一 JAR 形式运行。
+
+**生产地址：** https://movies-project-wuhk.onrender.com
+
+| 配置 | 说明 |
+|------|------|
+| `render.yaml` | Render Blueprint 基础设施即代码 |
+| `backend/Dockerfile` | 多阶段 Docker 构建（Maven 编译 + JRE 运行） |
+| `backend/.dockerignore` | 优化构建上下文 |
+
+**数据库：** TiDB Cloud（MySQL 兼容），通过环境变量配置：
+
+| 变量 | 说明 |
+|------|------|
+| `TIDB_HOST` | TiDB Cloud 主机地址 |
+| `TIDB_PORT` | 端口（默认 4000） |
+| `TIDB_DB_NAME` | 数据库名（`movie_db`） |
+| `TIDB_USER` | 用户名 |
+| `TIDB_PASSWORD` | 密码 |
+
+**部署触发：** 推送 `main` 分支自动触发 Render 重新部署。
+
+### Docker 本地构建
+
+```bash
+cd backend
+docker build -t movies-project .
+docker run -p 8080:8080 \
+  -e TIDB_HOST=localhost \
+  -e TIDB_PORT=3306 \
+  -e TIDB_DB_NAME=movie_db \
+  -e TIDB_USER=root \
+  -e TIDB_PASSWORD=your_password \
+  movies-project
+```
+
+### 前后端分离开发
+
+```bash
+# Terminal 1: 后端
+cd backend && mvn spring-boot:run
+
+# Terminal 2: 前端（开发代理到 :8080）
+cd frontend && npm run dev
+```
+
 ## Claude Code 工具链
 
 本项目深度集成 Claude Code 工具生态：
