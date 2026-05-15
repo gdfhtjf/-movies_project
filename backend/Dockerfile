@@ -1,14 +1,11 @@
-FROM alpine:3.21 AS build
-RUN apk add --no-cache openjdk17-jdk maven
-ENV MAVEN_OPTS="-Xmx384m"
+FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
 COPY pom.xml .
-RUN mvn dependency:go-offline -B -q 2>/dev/null || true
+RUN mvn dependency:go-offline -B
 COPY src ./src
-RUN mvn package -DskipTests -B -q
+RUN mvn package -DskipTests -B
 
-FROM alpine:3.21
-RUN apk add --no-cache openjdk17-jre-headless
+FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080

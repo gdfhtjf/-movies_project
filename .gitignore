@@ -46,14 +46,7 @@ backend/movie_uploads/*
 # mvnw
 # mvnw.cmd
 
-# --- Ruflo / Claude-Flow ---
-.claude-flow/data/
-.claude-flow/logs/
-.claude-flow/metrics/
-.claude-flow/sessions/
-.claude-flow/swarm/
-.claude-flow/daemon-state.json
+# --- Ruflo (已移除) ---
+.claude-flow/
 .swarm/
 .ruvector.db
-mcp.json
-mcp-local.json

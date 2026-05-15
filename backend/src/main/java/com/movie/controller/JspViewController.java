@@ -20,6 +20,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class JspViewController {
 
+
     private final MovieService movieService;
     private final OrderService orderService;
     private final ScreeningService screeningService;

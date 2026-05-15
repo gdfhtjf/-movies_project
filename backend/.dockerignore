@@ -1,9 +1,0 @@
-target/
-*.jar
-*.war
-*.log
-.git
-.gitignore
-README.md
-movie_uploads/
-src/main/resources/static/*.map
