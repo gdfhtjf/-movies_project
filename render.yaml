@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: movies-project
+    runtime: docker
+    repo: https://github.com/gdfhtjf/movies-project
+    branch: main
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/movies
+    autoDeploy: true
+    envVars:
+      - key: TIDB_HOST
+        sync: false
+      - key: TIDB_PORT
+        value: "4000"
+      - key: TIDB_DB_NAME
+        value: movie_db
+      - key: TIDB_USER
+        sync: false
+      - key: TIDB_PASSWORD
+        sync: false

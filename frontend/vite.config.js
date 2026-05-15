@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import path from 'path'
 
 export default defineConfig(({ mode }) => ({
-  base: mode === 'production' ? '/-movies_project/' : '/',
+  base: '/',
   plugins: [
     vue(),
   ],

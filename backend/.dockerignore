@@ -1,0 +1,12 @@
+target/
+*.jar
+*.war
+*.log
+.git
+.gitignore
+README.md
+movie_uploads/
+.mvn/
+mvnw
+mvnw.cmd
+src/main/resources/static/*.map
